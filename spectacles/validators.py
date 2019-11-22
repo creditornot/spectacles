@@ -181,8 +181,11 @@ class SqlValidator(Validator):
                 for dimension_json in dimensions_json:
                     dimension = Dimension.from_json(dimension_json)
                     dimension.url = self.client.base_url + dimension.url
-                    if not dimension.ignore and dimension.view in views:
-                        explore.add_dimension(dimension)
+                    if not dimension.ignore:
+                        if len(views) == 0:
+                            explore.add_dimension(dimension)
+                        elif dimension.view in views:
+                            explore.add_dimension(dimension)
 
             model.explores = selected_explores
 
