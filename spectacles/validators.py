@@ -129,7 +129,7 @@ class SqlValidator(Validator):
             )
         return [each for each in select_from if each.name in unique_choices]
 
-    def build_project(self, selectors: List[str]) -> None:
+    def build_project(self, selectors: List[str], views: List[str]) -> None:
         """Creates an object representation of the project's LookML.
 
         Args:
@@ -181,7 +181,7 @@ class SqlValidator(Validator):
                 for dimension_json in dimensions_json:
                     dimension = Dimension.from_json(dimension_json)
                     dimension.url = self.client.base_url + dimension.url
-                    if not dimension.ignore:
+                    if not dimension.ignore and dimension.view in views:
                         explore.add_dimension(dimension)
 
             model.explores = selected_explores

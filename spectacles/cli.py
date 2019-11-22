@@ -168,6 +168,7 @@ def main():
             args.project,
             args.branch,
             args.explores,
+            args.views,
             args.base_url,
             args.client_id,
             args.client_secret,
@@ -336,6 +337,12 @@ def _build_sql_subparser(
             'model_name/*' would select all explores in the 'model_name' model.",
     )
     subparser.add_argument(
+        "--views",
+        nargs="+",
+        default=[],
+        help="Specify a list of views to restrict dimensions to.",
+    )
+    subparser.add_argument(
         "--mode",
         choices=["batch", "single", "hybrid"],
         default="batch",
@@ -407,6 +414,7 @@ def run_sql(
     project,
     branch,
     explores,
+    views,
     base_url,
     client_id,
     client_secret,
@@ -426,7 +434,7 @@ def run_sql(
         api_version,
         remote_reset,
     )
-    errors = runner.validate_sql(explores, mode)
+    errors = runner.validate_sql(explores, views, mode)
     if errors:
         for error in sorted(errors, key=lambda x: x["path"]):
             printer.print_sql_error(error)

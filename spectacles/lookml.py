@@ -9,10 +9,11 @@ class LookMlObject:
 
 
 class Dimension(LookMlObject):
-    def __init__(self, name: str, type: str, sql: str, url: Optional[str]):
+    def __init__(self, name: str, type: str, sql: str, view: str, url: Optional[str]):
         self.name = name
         self.type = type
         self.sql = sql
+        self.view = view
         self.url = url
         self.queried: bool = False
         self.error: Optional[SqlError] = None
@@ -55,8 +56,9 @@ class Dimension(LookMlObject):
         name = json_dict["name"]
         type = json_dict["type"]
         sql = json_dict["sql"]
+        view = json_dict["view"]
         url = json_dict["lookml_link"]
-        return cls(name, type, sql, url)
+        return cls(name, type, sql, view, url)
 
 
 class Explore(LookMlObject):
