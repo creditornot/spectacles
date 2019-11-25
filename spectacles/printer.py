@@ -46,6 +46,11 @@ def print_sql_error(error: dict) -> None:
     print_header(red(error["path"]), LINE_WIDTH + COLOR_CODE_LENGTH)
     wrapped = textwrap.fill(error["message"], LINE_WIDTH)
     logger.info(wrapped)
+    if error.get('line_number') is not None:
+        line_number = max(0, int(error.get('line_number')) - 1)
+        sql_line = error.get('sql', '').split('\n')[line_number]
+        wrapped_sql_line = textwrap.fill(sql_line, LINE_WIDTH)
+        logger.info("\n" + wrapped_sql_line)
     # if error["line_number"]:
     #     sql_context = extract_sql_context(error["sql"], error["line_number"])
     #     logger.info("\n" + sql_context)
