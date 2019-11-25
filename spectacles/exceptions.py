@@ -27,7 +27,11 @@ class SqlError(ValidationError):
         self.url = url
 
     def __repr__(self):
-        return self.message
+        if self.line_number is not None:
+            sql_line = self.sql.split('\n')[self.line_number - 1]
+            return f"{self.message}\n{sql_line}"
+        else:
+            return self.message
 
 
 class DataTestError(ValidationError):
