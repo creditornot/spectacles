@@ -48,7 +48,7 @@ def print_sql_error(error: dict) -> None:
     logger.info(wrapped)
     if error.get('line_number') is not None:
         line_number_start = max(0, int(error.get('line_number')) - 4)
-        sql_line = error.get('sql', '').split('\n')[line_number_start: line_number_start + 4]
+        sql_line = [line.strip() for line in error.get('sql', '').replace('\t', '').split('\n')][line_number_start: line_number_start + 4]
         wrapped_sql_line = textwrap.fill("\n".join(sql_line), LINE_WIDTH)
         logger.info("\n" + wrapped_sql_line)
     # if error["line_number"]:
