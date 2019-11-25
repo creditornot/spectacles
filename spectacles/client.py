@@ -45,8 +45,24 @@ class LookerClient:
         self.base_url: str = base_url.rstrip("/")
         self.api_url: str = f"{self.base_url}:{port}/api/{api_version}/"
         self.session: requests.Session = requests.Session()
+        self.session.hooks['response'].append(self.reauthenticate)
 
         self.authenticate(client_id, client_secret, api_version)
+
+    def reauthenticate(self, res, *args, **kwargs):
+        if res.status_code == requests.codes.unauthorized:
+            print('Token expired, refreshing')
+            self.authenticate()
+
+            req = res.request
+            print('Resending request', req.method, req.url, req.headers)
+            req.headers['Authorization'] = self.session.headers['Authorization']
+
+            # Deregister the hook on the old request so we don't end up in a loop
+            req.deregister_hook('response', self.reauthenticate)
+
+            # Resend the original request
+            return self.session.send(res.request)
 
     def authenticate(
         self, client_id: str, client_secret: str, api_version: float
