@@ -187,6 +187,9 @@ class SqlValidator(Validator):
                         elif dimension.view in views:
                             explore.add_dimension(dimension)
 
+            # Remove any explores that have 0 dimensions to test
+            selected_explores = [explore for explore in selected_explores if len(explore.dimensions) > 0]
+
             model.explores = selected_explores
 
         self.project.models = selected_models
