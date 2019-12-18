@@ -263,6 +263,8 @@ class SqlValidator(Validator):
         tasks_to_check = query_task_ids[:MAX_QUERY_FETCH]
         del query_task_ids[:MAX_QUERY_FETCH]
         logger.debug(f"{len(query_task_ids)} left in queue")
+        if len(tasks_to_check) == 0:
+            return []
         tasks_to_check, errors = self._get_query_results(tasks_to_check)
 
         while tasks_to_check or query_task_ids:
