@@ -9,8 +9,11 @@ from typing import Callable
 from spectacles.runner import Runner
 from spectacles.client import LookerClient
 from spectacles.exceptions import SpectaclesException, ValidationError
-from spectacles.logger import GLOBAL_LOGGER as logger, LOG_FILEPATH
+from spectacles.logger import GLOBAL_LOGGER as logger, FileFormatter
 import spectacles.printer as printer
+
+LOG_FILENAME = "spectacles.log"
+LOG_FILEPATH = Path()
 
 
 class ConfigFileAction(argparse.Action):
@@ -130,6 +133,10 @@ def handle_exceptions(function: Callable) -> Callable:
                 + "\n"
             )
             sys.exit(error.exit_code)
+        except KeyboardInterrupt as error:
+            logger.debug(error, exc_info=True)
+            logger.info("Spectacles was manually interrupted.")
+            sys.exit(1)
         except Exception as error:
             logger.debug(error, exc_info=True)
             logger.error(
@@ -146,14 +153,32 @@ def handle_exceptions(function: Callable) -> Callable:
     return wrapper
 
 
+def set_file_handler(directory: str) -> None:
+
+    global LOG_FILEPATH
+
+    log_directory = Path(directory)
+    LOG_FILEPATH = Path(log_directory / LOG_FILENAME)
+    log_directory.mkdir(exist_ok=True)
+
+    fh = logging.FileHandler(LOG_FILEPATH)
+    fh.setLevel(logging.DEBUG)
+
+    formatter = FileFormatter("%(asctime)s %(levelname)s | %(message)s")
+    fh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+
+
 @handle_exceptions
 def main():
     """Runs main function. This is the entry point."""
     parser = create_parser()
     args = parser.parse_args()
     for handler in logger.handlers:
-        if not isinstance(handler, logging.FileHandler):
-            handler.setLevel(args.log_level)
+        handler.setLevel(args.log_level)
+
+    set_file_handler(args.log_dir)
 
     if args.command == "connect":
         run_connect(
@@ -176,6 +201,7 @@ def main():
             args.api_version,
             args.mode,
             args.remote_reset,
+            args.concurrency,
         )
     elif args.command == "assert":
         run_assert(
@@ -186,6 +212,7 @@ def main():
             args.client_secret,
             args.port,
             args.api_version,
+            args.remote_reset,
         )
 
 
@@ -267,6 +294,13 @@ def _build_base_subparser() -> argparse.ArgumentParser:
         default=logging.INFO,
         help="Display debug logging during spectacles execution. \
             Useful for debugging and making bug reports.",
+    )
+    base_subparser.add_argument(
+        "--log-dir",
+        action=EnvVarAction,
+        env_var="SPECTACLES_LOG_DIR",
+        default="logs",
+        help="The directory that Spectacles will write logs to.",
     )
 
     return base_subparser
@@ -359,6 +393,13 @@ def _build_sql_subparser(
             user's branch to the revision of the branch that is on the remote. \
             WARNING: This will delete any uncommited changes in the user's workspace.",
     )
+    subparser.add_argument(
+        "--concurrency",
+        default=10,
+        type=int,
+        help="Specify how many concurrent queries you want to have running \
+            against your data warehouse. The default is 10.",
+    )
 
 
 def _build_assert_subparser(
@@ -385,6 +426,13 @@ def _build_assert_subparser(
     subparser.add_argument(
         "--branch", action=EnvVarAction, env_var="LOOKER_GIT_BRANCH", required=True
     )
+    subparser.add_argument(
+        "--remote-reset",
+        action="store_true",
+        help="When set to true, the SQL validator will tell Looker to reset the \
+            user's branch to the revision of the branch that is on the remote. \
+            WARNING: This will delete any uncommited changes in the user's workspace.",
+    )
 
 
 def run_connect(
@@ -395,10 +443,17 @@ def run_connect(
 
 
 def run_assert(
-    project, branch, base_url, client_id, client_secret, port, api_version
+    project, branch, base_url, client_id, client_secret, port, api_version, remote_reset
 ) -> None:
     runner = Runner(
-        base_url, project, branch, client_id, client_secret, port, api_version
+        base_url,
+        project,
+        branch,
+        client_id,
+        client_secret,
+        port,
+        api_version,
+        remote_reset,
     )
     errors = runner.validate_data_tests()
     if errors:
@@ -422,6 +477,7 @@ def run_sql(
     api_version,
     mode,
     remote_reset,
+    concurrency,
 ) -> None:
     """Runs and validates the SQL for each selected LookML dimension."""
     runner = Runner(
@@ -434,7 +490,7 @@ def run_sql(
         api_version,
         remote_reset,
     )
-    errors = runner.validate_sql(explores, views, mode)
+    errors = runner.validate_sql(explores, views, mode, concurrency)
     if errors:
         for error in sorted(errors, key=lambda x: x["path"]):
             printer.print_sql_error(error)
